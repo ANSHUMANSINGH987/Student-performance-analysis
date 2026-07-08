@@ -9,7 +9,7 @@ from sklearn.ensemble import (
     RandomForestRegressor,
 )
 from sklearn.linear_model import LinearRegression
-from sklearn.metrics import r2_score
+from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.tree import DecisionTreeRegressor
 from xgboost import XGBRegressor
@@ -110,7 +110,51 @@ class ModelTrainer:
             predicted=best_model.predict(X_test)
 
             r2_square = r2_score(y_test, predicted)
-            return r2_square
+            mse = mean_squared_error(y_test, predicted)
+            rmse = float(mse ** 0.5)
+            mae = float(mean_absolute_error(y_test, predicted))
+
+            importances = []
+            try:
+                import dill
+                preprocessor_path = os.path.join("artifacts", "preprocessor.pkl")
+                with open(preprocessor_path, 'rb') as f:
+                    preprocessor = dill.load(f)
+                raw_names = preprocessor.get_feature_names_out()
+                
+                clean_names = []
+                for n in raw_names:
+                    if n.startswith('num_pipeline__'): 
+                        clean_names.append(n.replace('num_pipeline__', ''))
+                    elif n.startswith('cat_pipelines__'): 
+                        clean_names.append(n.replace('cat_pipelines__', ''))
+                    else: 
+                        clean_names.append(n)
+                
+                if hasattr(best_model, 'feature_importances_'):
+                    fi = best_model.feature_importances_
+                    for name, imp in zip(clean_names, fi):
+                        importances.append({"feature": name, "importance": float(imp)})
+                    importances = sorted(importances, key=lambda x: x['importance'], reverse=True)
+                elif hasattr(best_model, 'coef_'):
+                    import numpy as np
+                    fi = np.abs(best_model.coef_)
+                    total = np.sum(fi)
+                    if total > 0:
+                        fi = fi / total
+                    for name, imp in zip(clean_names, fi):
+                        importances.append({"feature": name, "importance": float(imp)})
+                    importances = sorted(importances, key=lambda x: x['importance'], reverse=True)
+            except Exception as e:
+                logging.warning(f"Could not extract feature importances: {e}")
+
+            return {
+                "r2": float(r2_square),
+                "rmse": rmse,
+                "mae": mae,
+                "best_model_name": best_model_name,
+                "importances": importances
+            }
         
             
         except Exception as e:

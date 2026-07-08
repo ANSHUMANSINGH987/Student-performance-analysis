@@ -1,4 +1,4 @@
-from flask import Flask,request,render_template
+from flask import Flask, request, render_template, jsonify
 import numpy as np
 import pandas as pd
 import threading
@@ -42,18 +42,50 @@ def predict_datapoint():
         print("Mid Prediction")
         results=predict_pipeline.predict(pred_df)
         print("after Prediction")
-        return render_template('home.html',results=results[0])
+        
+        input_data = pred_df.to_dict('records')[0]
+        return render_template('home.html',results=results[0], input_data=input_data)
 
-@app.route('/train', methods=['GET'])
+@app.route('/train', methods=['GET', 'POST'])
 def train_model():
+    if request.method == 'GET':
+        return render_template('train.html')
+    
+    # POST request to start training
+    metrics_path = os.path.join('artifacts', 'model_metrics.json')
+    if os.path.exists(metrics_path):
+        os.remove(metrics_path)
+        
     def run_training():
-        train_pipeline = TrainPipeline()
-        score = train_pipeline.run_pipeline()
-        print(f"Training completed successfully. R2 score: {score}")
+        try:
+            train_pipeline = TrainPipeline()
+            metrics = train_pipeline.run_pipeline()
+            with open(metrics_path, 'w') as f:
+                json.dump(metrics, f)
+            print("Training completed and metrics saved.")
+        except Exception as e:
+            with open(metrics_path, 'w') as f:
+                json.dump({"error": str(e)}, f)
+            print(f"Training failed: {e}")
 
     training_thread = threading.Thread(target=run_training, daemon=True)
     training_thread.start()
-    return render_template('index.html', train_message='Training started in the background. Check the terminal for completion.')
+    return jsonify({"status": "started"})
+
+@app.route('/training_status', methods=['GET'])
+def training_status():
+    metrics_path = os.path.join('artifacts', 'model_metrics.json')
+    if os.path.exists(metrics_path):
+        try:
+            with open(metrics_path, 'r') as f:
+                metrics = json.load(f)
+            if "error" in metrics:
+                return jsonify({"status": "error", "error": metrics["error"]})
+            return jsonify({"status": "completed", "metrics": metrics})
+        except Exception:
+            return jsonify({"status": "training"})
+    else:
+        return jsonify({"status": "training"})
     
 @app.route('/analytics')
 def analytics():

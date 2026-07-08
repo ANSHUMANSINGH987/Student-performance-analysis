@@ -3,9 +3,19 @@
 {% block title %}Analytics | EduMetrics{% endblock %}
 
 {% block content %}
-<div style="margin-bottom: 2rem;">
-    <h1 class="card-title">Data Analytics</h1>
-    <p class="card-subtitle">Visual insights into the student performance dataset.</p>
+<div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem;">
+    <div>
+        <h1 class="card-title" style="margin-bottom: 0.5rem;">Data Analytics</h1>
+        <p class="card-subtitle" style="margin-bottom: 0;">Visual insights into the student performance dataset.</p>
+    </div>
+    <div>
+        {% if not error %}
+        <button type="button" onclick="downloadAnalyticsReport()" class="btn btn-secondary">
+            <i class="fa-solid fa-file-pdf"></i> Export to PDF
+        </button>
+        {% endif %}
+    </div>
+</div>
 
     {% if error %}
     <div class="alert">
@@ -14,7 +24,8 @@
     </div>
     {% else %}
     
-    <!-- STAT CARDS -->
+    <div id="analytics-report" style="position: relative;">
+        <!-- STAT CARDS -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
         <div class="glass-card" style="padding: 1.5rem; text-align: center;">
             <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem;">Total Students</div>
@@ -36,7 +47,7 @@
 
     <!-- FILTER BAR -->
     <div class="glass-card" style="padding: 1.5rem; margin-bottom: 2rem; display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: center;">
-        <div style="font-weight: 600; color: #fff;"><i class="fa-solid fa-filter"></i> Filters:</div>
+        <div style="font-weight: 700; color: #000; font-family: 'Space Grotesk', sans-serif;"><i class="fa-solid fa-filter"></i> FILTERS:</div>
         
         <select id="filterGender" class="filter-select" onchange="applyFilters()">
             <option value="all">All Genders</option>
@@ -64,43 +75,46 @@
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 2rem;">
         
         <div class="glass-card" style="padding: 1.5rem;">
-            <h3 style="color: #fff; margin-bottom: 1rem; font-size: 1.1rem; text-align: center;">Average Scores by Gender</h3>
+            <h3 style="color: #000; margin-bottom: 1rem; font-size: 1.1rem; text-align: center;">Average Scores by Gender</h3>
             <canvas id="genderChart" style="max-height: 300px;"></canvas>
         </div>
 
         <div class="glass-card" style="padding: 1.5rem;">
-            <h3 style="color: #fff; margin-bottom: 1rem; font-size: 1.1rem; text-align: center;">Math Score vs Test Prep</h3>
+            <h3 style="color: #000; margin-bottom: 1rem; font-size: 1.1rem; text-align: center;">Math Score vs Test Prep</h3>
             <canvas id="prepChart" style="max-height: 300px;"></canvas>
         </div>
 
         <div class="glass-card" style="padding: 1.5rem;">
-            <h3 style="color: #fff; margin-bottom: 1rem; font-size: 1.1rem; text-align: center;">Subject Performance by Ethnicity</h3>
+            <h3 style="color: #000; margin-bottom: 1rem; font-size: 1.1rem; text-align: center;">Subject Performance by Ethnicity</h3>
             <canvas id="radarChart" style="max-height: 350px;"></canvas>
         </div>
         
         <div class="glass-card" style="padding: 1.5rem;">
-            <h3 style="color: #fff; margin-bottom: 1rem; font-size: 1.1rem; text-align: center;">Math Score Distribution</h3>
+            <h3 style="color: #000; margin-bottom: 1rem; font-size: 1.1rem; text-align: center;">Math Score Distribution</h3>
             <canvas id="distChart" style="max-height: 350px;"></canvas>
         </div>
 
         <div class="glass-card" style="padding: 1.5rem; grid-column: 1 / -1;">
-            <h3 style="color: #fff; margin-bottom: 1rem; font-size: 1.1rem; text-align: center;">Math vs Reading Scores Correlation</h3>
+            <h3 style="color: #000; margin-bottom: 1rem; font-size: 1.1rem; text-align: center;">Math vs Reading Scores Correlation</h3>
             <canvas id="scatterChart" style="max-height: 400px;"></canvas>
         </div>
 
     </div>
+    </div> <!-- End analytics-report -->
     {% endif %}
 </div>
 
 <style>
     .filter-select {
         padding: 0.6rem 1rem;
-        background: rgba(0, 0, 0, 0.3);
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        color: #fff;
+        background-color: #fff;
+        border: var(--border-width) solid var(--border-color);
+        border-radius: 0;
+        color: #000;
         font-family: inherit;
         outline: none;
+        font-weight: 600;
+        box-shadow: 2px 2px 0px rgba(0,0,0,0.1);
     }
     .filter-select:focus {
         border-color: var(--accent);
@@ -110,15 +124,18 @@
     }
 </style>
 
-<!-- Load Chart.js -->
+<!-- Load Libraries -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 <script>
     const rawData = {{ raw_data|safe if raw_data else 'null' }};
     
-    // Global Chart.js styling for dark mode
-    Chart.defaults.color = '#94a3b8';
-    Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.1)';
+    // Global Chart.js styling for brutalist mode
+    Chart.defaults.color = '#000000';
+    Chart.defaults.font.family = "'Space Grotesk', sans-serif";
+    Chart.defaults.font.weight = '600';
+    Chart.defaults.borderColor = 'rgba(0, 0, 0, 0.1)';
 
     let genderChart, prepChart, scatterChart, radarChart, distChart;
 
@@ -276,9 +293,9 @@
         genderChart.data = {
             labels: gLabels,
             datasets: [
-                { label: 'Math', data: mData, backgroundColor: 'rgba(99, 102, 241, 0.7)', borderWidth: 1, borderColor: 'rgba(99, 102, 241, 1)' },
-                { label: 'Reading', data: rData, backgroundColor: 'rgba(16, 185, 129, 0.7)', borderWidth: 1, borderColor: 'rgba(16, 185, 129, 1)' },
-                { label: 'Writing', data: wData, backgroundColor: 'rgba(245, 158, 11, 0.7)', borderWidth: 1, borderColor: 'rgba(245, 158, 11, 1)' }
+                { label: 'Math', data: mData, backgroundColor: '#facc15', borderWidth: 3, borderColor: '#000' },
+                { label: 'Reading', data: rData, backgroundColor: '#3b82f6', borderWidth: 3, borderColor: '#000' },
+                { label: 'Writing', data: wData, backgroundColor: '#ef4444', borderWidth: 3, borderColor: '#000' }
             ]
         };
         genderChart.update();
@@ -297,9 +314,9 @@
             labels: pLabels,
             datasets: [{
                 data: pmData,
-                backgroundColor: ['rgba(239, 68, 68, 0.7)', 'rgba(16, 185, 129, 0.7)'],
-                borderColor: ['rgba(239, 68, 68, 1)', 'rgba(16, 185, 129, 1)'],
-                borderWidth: 1
+                backgroundColor: ['#22c55e', '#a855f7'],
+                borderColor: ['#000', '#000'],
+                borderWidth: 3
             }]
         };
         prepChart.update();
@@ -310,9 +327,10 @@
             datasets: [{
                 label: 'Student Scores',
                 data: scatterPts,
-                backgroundColor: 'rgba(99, 102, 241, 0.5)',
-                borderColor: 'rgba(99, 102, 241, 0.8)',
-                pointRadius: 4, pointHoverRadius: 6
+                backgroundColor: '#ec4899',
+                borderColor: '#000',
+                borderWidth: 2,
+                pointRadius: 6, pointHoverRadius: 8
             }]
         };
         scatterChart.update();
@@ -327,16 +345,8 @@
             raceGroups[r.race_ethnicity].c++;
         });
         const rLabels = Object.keys(raceGroups).sort();
-        const colors = [
-            'rgba(99, 102, 241, 0.4)', 'rgba(16, 185, 129, 0.4)', 
-            'rgba(245, 158, 11, 0.4)', 'rgba(236, 72, 153, 0.4)', 
-            'rgba(168, 85, 247, 0.4)'
-        ];
-        const borderColors = [
-            'rgba(99, 102, 241, 1)', 'rgba(16, 185, 129, 1)', 
-            'rgba(245, 158, 11, 1)', 'rgba(236, 72, 153, 1)', 
-            'rgba(168, 85, 247, 1)'
-        ];
+        const colors = ['#facc15', '#3b82f6', '#ef4444', '#22c55e', '#ec4899'];
+        const borderColors = ['#000', '#000', '#000', '#000', '#000'];
         
         radarChart.data.datasets = rLabels.map((race, i) => {
             return {
@@ -346,9 +356,9 @@
                     raceGroups[race].r / raceGroups[race].c,
                     raceGroups[race].w / raceGroups[race].c
                 ],
-                backgroundColor: colors[i % colors.length],
+                backgroundColor: colors[i % colors.length] + '80', // opacity
                 borderColor: borderColors[i % borderColors.length],
-                borderWidth: 2
+                borderWidth: 3
             };
         });
         radarChart.update();
@@ -371,12 +381,30 @@
             datasets: [{
                 label: 'Number of Students',
                 data: binCounts,
-                backgroundColor: 'rgba(168, 85, 247, 0.7)',
-                borderColor: 'rgba(168, 85, 247, 1)',
-                borderWidth: 1
+                backgroundColor: '#f97316',
+                borderColor: '#000',
+                borderWidth: 3
             }]
         };
         distChart.update();
+    }
+
+    function downloadAnalyticsReport() {
+        const element = document.getElementById('analytics-report');
+        const opt = {
+            margin:       0.3,
+            filename:     'EduMetrics_Analytics_Dashboard.pdf',
+            image:        { type: 'jpeg', quality: 1.0 },
+            html2canvas:  { scale: 2, useCORS: true, backgroundColor: '#fdfbf7' },
+            jsPDF:        { unit: 'in', format: 'a4', orientation: 'landscape' }
+        };
+        
+        const originalBg = element.style.backgroundColor;
+        element.style.backgroundColor = '#fdfbf7'; // match light theme
+        
+        html2pdf().set(opt).from(element).save().then(() => {
+            element.style.backgroundColor = originalBg;
+        });
     }
 </script>
 {% endblock %}
