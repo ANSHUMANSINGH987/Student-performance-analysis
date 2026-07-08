@@ -268,6 +268,9 @@
                 <a href="{{ url_for('predict_datapoint') }}" class="nav-link {% if request.endpoint == 'predict_datapoint' %}active{% endif %}">
                     <i class="fa-solid fa-wand-magic-sparkles"></i> Predict Score
                 </a>
+                <a href="{{ url_for('analytics') }}" class="nav-link {% if request.endpoint == 'analytics' %}active{% endif %}">
+                    <i class="fa-solid fa-chart-pie"></i> Analytics
+                </a>
                 <a href="{{ url_for('train_model') }}" class="nav-link">
                     <i class="fa-solid fa-gear"></i> Train Model
                 </a>

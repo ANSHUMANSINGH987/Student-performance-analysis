@@ -1,0 +1,382 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics | EduMetrics{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 2rem;">
+    <h1 class="card-title">Data Analytics</h1>
+    <p class="card-subtitle">Visual insights into the student performance dataset.</p>
+
+    {% if error %}
+    <div class="alert">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span>{{ error }}</span>
+    </div>
+    {% else %}
+    
+    <!-- STAT CARDS -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+        <div class="glass-card" style="padding: 1.5rem; text-align: center;">
+            <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem;">Total Students</div>
+            <div id="statTotal" style="font-size: 2rem; font-weight: 700; color: var(--text-main);">0</div>
+        </div>
+        <div class="glass-card" style="padding: 1.5rem; text-align: center;">
+            <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem;">Avg Math Score</div>
+            <div id="statMath" style="font-size: 2rem; font-weight: 700; color: var(--accent);">0</div>
+        </div>
+        <div class="glass-card" style="padding: 1.5rem; text-align: center;">
+            <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem;">Avg Reading Score</div>
+            <div id="statReading" style="font-size: 2rem; font-weight: 700; color: var(--success);">0</div>
+        </div>
+        <div class="glass-card" style="padding: 1.5rem; text-align: center;">
+            <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem;">Avg Writing Score</div>
+            <div id="statWriting" style="font-size: 2rem; font-weight: 700; color: #f59e0b;">0</div>
+        </div>
+    </div>
+
+    <!-- FILTER BAR -->
+    <div class="glass-card" style="padding: 1.5rem; margin-bottom: 2rem; display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: center;">
+        <div style="font-weight: 600; color: #fff;"><i class="fa-solid fa-filter"></i> Filters:</div>
+        
+        <select id="filterGender" class="filter-select" onchange="applyFilters()">
+            <option value="all">All Genders</option>
+            <option value="female">Female</option>
+            <option value="male">Male</option>
+        </select>
+        
+        <select id="filterRace" class="filter-select" onchange="applyFilters()">
+            <option value="all">All Ethnicities</option>
+            <option value="group A">Group A</option>
+            <option value="group B">Group B</option>
+            <option value="group C">Group C</option>
+            <option value="group D">Group D</option>
+            <option value="group E">Group E</option>
+        </select>
+        
+        <select id="filterLunch" class="filter-select" onchange="applyFilters()">
+            <option value="all">All Lunch Types</option>
+            <option value="standard">Standard</option>
+            <option value="free/reduced">Free/reduced</option>
+        </select>
+    </div>
+
+    <!-- CHARTS GRID -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 2rem;">
+        
+        <div class="glass-card" style="padding: 1.5rem;">
+            <h3 style="color: #fff; margin-bottom: 1rem; font-size: 1.1rem; text-align: center;">Average Scores by Gender</h3>
+            <canvas id="genderChart" style="max-height: 300px;"></canvas>
+        </div>
+
+        <div class="glass-card" style="padding: 1.5rem;">
+            <h3 style="color: #fff; margin-bottom: 1rem; font-size: 1.1rem; text-align: center;">Math Score vs Test Prep</h3>
+            <canvas id="prepChart" style="max-height: 300px;"></canvas>
+        </div>
+
+        <div class="glass-card" style="padding: 1.5rem;">
+            <h3 style="color: #fff; margin-bottom: 1rem; font-size: 1.1rem; text-align: center;">Subject Performance by Ethnicity</h3>
+            <canvas id="radarChart" style="max-height: 350px;"></canvas>
+        </div>
+        
+        <div class="glass-card" style="padding: 1.5rem;">
+            <h3 style="color: #fff; margin-bottom: 1rem; font-size: 1.1rem; text-align: center;">Math Score Distribution</h3>
+            <canvas id="distChart" style="max-height: 350px;"></canvas>
+        </div>
+
+        <div class="glass-card" style="padding: 1.5rem; grid-column: 1 / -1;">
+            <h3 style="color: #fff; margin-bottom: 1rem; font-size: 1.1rem; text-align: center;">Math vs Reading Scores Correlation</h3>
+            <canvas id="scatterChart" style="max-height: 400px;"></canvas>
+        </div>
+
+    </div>
+    {% endif %}
+</div>
+
+<style>
+    .filter-select {
+        padding: 0.6rem 1rem;
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: #fff;
+        font-family: inherit;
+        outline: none;
+    }
+    .filter-select:focus {
+        border-color: var(--accent);
+    }
+    .filter-select option {
+        background: var(--bg-color);
+    }
+</style>
+
+<!-- Load Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    const rawData = {{ raw_data|safe if raw_data else 'null' }};
+    
+    // Global Chart.js styling for dark mode
+    Chart.defaults.color = '#94a3b8';
+    Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.1)';
+
+    let genderChart, prepChart, scatterChart, radarChart, distChart;
+
+    if (rawData) {
+        initCharts();
+        applyFilters(); // Initial render
+    }
+
+    function initCharts() {
+        const tooltipOptions = {
+            callbacks: {
+                label: function(context) {
+                    let label = context.dataset.label || '';
+                    if (label) { label += ': '; }
+                    if (context.parsed.y !== null) {
+                        label += context.parsed.y + ' Points';
+                    }
+                    return label;
+                }
+            }
+        };
+
+        // 1. Gender Bar Chart
+        genderChart = new Chart(document.getElementById('genderChart').getContext('2d'), {
+            type: 'bar',
+            data: { labels: [], datasets: [] },
+            options: { 
+                responsive: true, 
+                scales: { y: { beginAtZero: true, max: 100 } },
+                plugins: { tooltip: tooltipOptions } 
+            }
+        });
+
+        // 2. Prep Doughnut Chart
+        prepChart = new Chart(document.getElementById('prepChart').getContext('2d'), {
+            type: 'doughnut',
+            data: { labels: [], datasets: [] },
+            options: { 
+                responsive: true, 
+                plugins: { legend: { position: 'bottom' }, tooltip: tooltipOptions } 
+            }
+        });
+
+        // 3. Scatter Chart
+        scatterChart = new Chart(document.getElementById('scatterChart').getContext('2d'), {
+            type: 'scatter',
+            data: { datasets: [] },
+            options: {
+                responsive: true,
+                scales: {
+                    x: { title: { display: true, text: 'Math Score' }, min: 0, max: 100 },
+                    y: { title: { display: true, text: 'Reading Score' }, min: 0, max: 100 }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `Math: ${context.parsed.x}, Reading: ${context.parsed.y}`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        // 4. Radar Chart
+        radarChart = new Chart(document.getElementById('radarChart').getContext('2d'), {
+            type: 'radar',
+            data: { labels: ['Math', 'Reading', 'Writing'], datasets: [] },
+            options: {
+                responsive: true,
+                scales: { r: { min: 0, max: 100, ticks: { backdropColor: 'transparent' } } },
+                plugins: { tooltip: tooltipOptions }
+            }
+        });
+
+        // 5. Distribution Chart
+        distChart = new Chart(document.getElementById('distChart').getContext('2d'), {
+            type: 'bar', // histogram
+            data: { labels: [], datasets: [] },
+            options: {
+                responsive: true,
+                scales: {
+                    x: { title: { display: true, text: 'Score Range' } },
+                    y: { title: { display: true, text: 'Number of Students' }, beginAtZero: true }
+                }
+            }
+        });
+    }
+
+    function applyFilters() {
+        const gender = document.getElementById('filterGender').value;
+        const race = document.getElementById('filterRace').value;
+        const lunch = document.getElementById('filterLunch').value;
+
+        // Filter data
+        let filtered = rawData.filter(row => {
+            let match = true;
+            if (gender !== 'all' && row.gender !== gender) match = false;
+            if (race !== 'all' && row.race_ethnicity !== race) match = false;
+            if (lunch !== 'all' && row.lunch !== lunch) match = false;
+            return match;
+        });
+        
+        updateStatCards(filtered);
+        updateCharts(filtered);
+    }
+
+    function updateStatCards(data) {
+        if(data.length === 0) {
+            document.getElementById('statTotal').innerText = "0";
+            document.getElementById('statMath').innerText = "0";
+            document.getElementById('statReading').innerText = "0";
+            document.getElementById('statWriting').innerText = "0";
+            return;
+        }
+
+        const sum = data.reduce((acc, row) => {
+            acc.math += row.math_score;
+            acc.reading += row.reading_score;
+            acc.writing += row.writing_score;
+            return acc;
+        }, { math: 0, reading: 0, writing: 0 });
+
+        document.getElementById('statTotal').innerText = data.length;
+        document.getElementById('statMath').innerText = (sum.math / data.length).toFixed(1);
+        document.getElementById('statReading').innerText = (sum.reading / data.length).toFixed(1);
+        document.getElementById('statWriting').innerText = (sum.writing / data.length).toFixed(1);
+    }
+
+    function updateCharts(data) {
+        if(data.length === 0) {
+            genderChart.data.datasets = []; genderChart.update();
+            prepChart.data.datasets = []; prepChart.update();
+            scatterChart.data.datasets = []; scatterChart.update();
+            radarChart.data.datasets = []; radarChart.update();
+            distChart.data.datasets = []; distChart.update();
+            return;
+        }
+
+        // --- 1. Gender Bar Chart Aggregation ---
+        const genderGroups = {};
+        data.forEach(r => {
+            if(!genderGroups[r.gender]) genderGroups[r.gender] = {m:0, r:0, w:0, c:0};
+            genderGroups[r.gender].m += r.math_score;
+            genderGroups[r.gender].r += r.reading_score;
+            genderGroups[r.gender].w += r.writing_score;
+            genderGroups[r.gender].c++;
+        });
+        const gLabels = Object.keys(genderGroups);
+        const mData = gLabels.map(g => genderGroups[g].m / genderGroups[g].c);
+        const rData = gLabels.map(g => genderGroups[g].r / genderGroups[g].c);
+        const wData = gLabels.map(g => genderGroups[g].w / genderGroups[g].c);
+
+        genderChart.data = {
+            labels: gLabels,
+            datasets: [
+                { label: 'Math', data: mData, backgroundColor: 'rgba(99, 102, 241, 0.7)', borderWidth: 1, borderColor: 'rgba(99, 102, 241, 1)' },
+                { label: 'Reading', data: rData, backgroundColor: 'rgba(16, 185, 129, 0.7)', borderWidth: 1, borderColor: 'rgba(16, 185, 129, 1)' },
+                { label: 'Writing', data: wData, backgroundColor: 'rgba(245, 158, 11, 0.7)', borderWidth: 1, borderColor: 'rgba(245, 158, 11, 1)' }
+            ]
+        };
+        genderChart.update();
+
+        // --- 2. Prep Doughnut Chart Aggregation ---
+        const prepGroups = {};
+        data.forEach(r => {
+            if(!prepGroups[r.test_preparation_course]) prepGroups[r.test_preparation_course] = {m:0, c:0};
+            prepGroups[r.test_preparation_course].m += r.math_score;
+            prepGroups[r.test_preparation_course].c++;
+        });
+        const pLabels = Object.keys(prepGroups);
+        const pmData = pLabels.map(p => prepGroups[p].m / prepGroups[p].c);
+        
+        prepChart.data = {
+            labels: pLabels,
+            datasets: [{
+                data: pmData,
+                backgroundColor: ['rgba(239, 68, 68, 0.7)', 'rgba(16, 185, 129, 0.7)'],
+                borderColor: ['rgba(239, 68, 68, 1)', 'rgba(16, 185, 129, 1)'],
+                borderWidth: 1
+            }]
+        };
+        prepChart.update();
+
+        // --- 3. Scatter Chart ---
+        const scatterPts = data.map(r => ({x: r.math_score, y: r.reading_score}));
+        scatterChart.data = {
+            datasets: [{
+                label: 'Student Scores',
+                data: scatterPts,
+                backgroundColor: 'rgba(99, 102, 241, 0.5)',
+                borderColor: 'rgba(99, 102, 241, 0.8)',
+                pointRadius: 4, pointHoverRadius: 6
+            }]
+        };
+        scatterChart.update();
+
+        // --- 4. Radar Chart Aggregation ---
+        const raceGroups = {};
+        data.forEach(r => {
+            if(!raceGroups[r.race_ethnicity]) raceGroups[r.race_ethnicity] = {m:0, r:0, w:0, c:0};
+            raceGroups[r.race_ethnicity].m += r.math_score;
+            raceGroups[r.race_ethnicity].r += r.reading_score;
+            raceGroups[r.race_ethnicity].w += r.writing_score;
+            raceGroups[r.race_ethnicity].c++;
+        });
+        const rLabels = Object.keys(raceGroups).sort();
+        const colors = [
+            'rgba(99, 102, 241, 0.4)', 'rgba(16, 185, 129, 0.4)', 
+            'rgba(245, 158, 11, 0.4)', 'rgba(236, 72, 153, 0.4)', 
+            'rgba(168, 85, 247, 0.4)'
+        ];
+        const borderColors = [
+            'rgba(99, 102, 241, 1)', 'rgba(16, 185, 129, 1)', 
+            'rgba(245, 158, 11, 1)', 'rgba(236, 72, 153, 1)', 
+            'rgba(168, 85, 247, 1)'
+        ];
+        
+        radarChart.data.datasets = rLabels.map((race, i) => {
+            return {
+                label: race,
+                data: [
+                    raceGroups[race].m / raceGroups[race].c,
+                    raceGroups[race].r / raceGroups[race].c,
+                    raceGroups[race].w / raceGroups[race].c
+                ],
+                backgroundColor: colors[i % colors.length],
+                borderColor: borderColors[i % borderColors.length],
+                borderWidth: 2
+            };
+        });
+        radarChart.update();
+
+        // --- 5. Distribution Histogram Aggregation ---
+        const bins = [0, 20, 40, 60, 80, 100];
+        const binCounts = [0, 0, 0, 0, 0];
+        const binLabels = ['0-20', '21-40', '41-60', '61-80', '81-100'];
+        
+        data.forEach(r => {
+            if(r.math_score <= 20) binCounts[0]++;
+            else if(r.math_score <= 40) binCounts[1]++;
+            else if(r.math_score <= 60) binCounts[2]++;
+            else if(r.math_score <= 80) binCounts[3]++;
+            else binCounts[4]++;
+        });
+
+        distChart.data = {
+            labels: binLabels,
+            datasets: [{
+                label: 'Number of Students',
+                data: binCounts,
+                backgroundColor: 'rgba(168, 85, 247, 0.7)',
+                borderColor: 'rgba(168, 85, 247, 1)',
+                borderWidth: 1
+            }]
+        };
+        distChart.update();
+    }
+</script>
+{% endblock %}

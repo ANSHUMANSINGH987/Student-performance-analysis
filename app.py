@@ -2,6 +2,8 @@ from flask import Flask,request,render_template
 import numpy as np
 import pandas as pd
 import threading
+import json
+import os
 
 from sklearn.preprocessing import StandardScaler
 from src.pipelines.predict_pipeline import CustomData,PredictPipeline
@@ -53,6 +55,16 @@ def train_model():
     training_thread.start()
     return render_template('index.html', train_message='Training started in the background. Check the terminal for completion.')
     
+@app.route('/analytics')
+def analytics():
+    data_path = os.path.join('artifacts', 'data.csv')
+    if not os.path.exists(data_path):
+        return render_template('analytics.html', error="Data file not found.")
+        
+    df = pd.read_csv(data_path)
+    raw_data = df.to_dict('records')
+    
+    return render_template('analytics.html', raw_data=json.dumps(raw_data))
 
 if __name__=="__main__":
     app.run(host="0.0.0.0",debug=True)        
