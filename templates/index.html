@@ -1,1 +1,37 @@
-<h1>Welcome to the home page</h1>
+{% extends "base.html" %}
+
+{% block title %}Dashboard | EduMetrics{% endblock %}
+
+{% block content %}
+<div class="glass-card">
+    <h1 class="card-title">Welcome to EduMetrics Dashboard</h1>
+    <p class="card-subtitle">AI-powered student performance predictions and analytics.</p>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-top: 2rem;">
+        <div style="padding: 1.5rem; background: rgba(0,0,0,0.2); border-radius: 12px; border: 1px solid var(--border);">
+            <i class="fa-solid fa-robot" style="font-size: 2rem; color: var(--accent); margin-bottom: 1rem;"></i>
+            <h3 style="color: #fff; margin-bottom: 0.5rem; font-size: 1.1rem;">Predict Math Score</h3>
+            <p style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.5; margin-bottom: 1.5rem;">Input student demographics and background information to predict their potential math score using our trained ML model.</p>
+            <a href="{{ url_for('predict_datapoint') }}" class="btn btn-primary" style="width: 100%;">
+                <i class="fa-solid fa-arrow-right"></i> Start Prediction
+            </a>
+        </div>
+
+        <div style="padding: 1.5rem; background: rgba(0,0,0,0.2); border-radius: 12px; border: 1px solid var(--border);">
+            <i class="fa-solid fa-database" style="font-size: 2rem; color: var(--success); margin-bottom: 1rem;"></i>
+            <h3 style="color: #fff; margin-bottom: 0.5rem; font-size: 1.1rem;">Retrain Model</h3>
+            <p style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.5; margin-bottom: 1.5rem;">Trigger a background task to fetch latest dataset and retrain the machine learning pipeline to improve accuracy.</p>
+            <a href="{{ url_for('train_model') }}" class="btn btn-secondary" style="width: 100%;">
+                <i class="fa-solid fa-rotate-right"></i> Run Training
+            </a>
+        </div>
+    </div>
+
+    {% if train_message is defined %}
+    <div class="alert">
+        <i class="fa-solid fa-circle-check"></i>
+        <span>{{ train_message }}</span>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

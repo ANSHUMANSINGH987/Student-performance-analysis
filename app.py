@@ -1,6 +1,7 @@
 from flask import Flask,request,render_template
 import numpy as np
 import pandas as pd
+import threading
 
 from sklearn.preprocessing import StandardScaler
 from src.pipelines.predict_pipeline import CustomData,PredictPipeline
@@ -43,9 +44,14 @@ def predict_datapoint():
 
 @app.route('/train', methods=['GET'])
 def train_model():
-    train_pipeline = TrainPipeline()
-    score = train_pipeline.run_pipeline()
-    return f"Training completed successfully. R2 score: {score}"
+    def run_training():
+        train_pipeline = TrainPipeline()
+        score = train_pipeline.run_pipeline()
+        print(f"Training completed successfully. R2 score: {score}")
+
+    training_thread = threading.Thread(target=run_training, daemon=True)
+    training_thread.start()
+    return render_template('index.html', train_message='Training started in the background. Check the terminal for completion.')
     
 
 if __name__=="__main__":
